@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DevCORE | Polyglot IDE</title>
+    <title>DevCORE | Integrated IDE</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.4/ace.js"></script>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
@@ -17,11 +17,10 @@
             --text-light: #636c76;
             --shadow: 0 8px 24px rgba(149,157,165,0.1);
         }
-
         * { box-sizing: border-box; transition: all 0.2s ease; }
         body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
-
-        /* DASHBOARD VIEW */
+        
+        /* DASHBOARD */
         #dashboard { padding: 40px 20px; max-width: 1000px; margin: 0 auto; height: 100vh; overflow-y: auto; display: block; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
         .project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
@@ -29,11 +28,10 @@
         .project-card:hover { border-color: var(--accent); box-shadow: var(--shadow); transform: translateY(-2px); }
         .delete-proj-btn { position: absolute; top: 15px; right: 15px; color: #cf222e; background: none; border: none; cursor: pointer; font-size: 1.2rem; }
 
-        /* EDITOR VIEW */
+        /* EDITOR AREA */
         #editor-view { display: none; height: 100vh; flex-direction: column; background: #fff; }
         .navbar { height: 60px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; justify-content: space-between; background: #fff; z-index: 1000; }
         .workspace { display: flex; flex: 1; position: relative; overflow: hidden; }
-
         .sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 999; }
         @media (max-width: 768px) {
             .sidebar { position: absolute; left: -280px; top: 0; bottom: 0; }
@@ -41,11 +39,10 @@
             .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 998; }
             .overlay.active { display: block; }
         }
-
         .sidebar-content { padding: 20px; flex: 1; overflow-y: auto; }
-        .file-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; margin-bottom: 6px; display: flex; justify-content: space-between; font-size: 14px; align-items: center; }
-        .file-item:hover { background: #fff; border: 1px solid var(--border); }
-        .file-item.active { background: #fff; border: 1px solid var(--accent); color: var(--accent); font-weight: 600; }
+        .file-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; margin-bottom: 6px; display: flex; justify-content: space-between; font-size: 14px; align-items: center; border: 1px solid transparent; }
+        .file-item:hover { background: #fff; border-color: var(--border); }
+        .file-item.active { background: #fff; border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
         .editor-container { flex: 1; display: flex; flex-direction: column; min-width: 0; }
         #ace-editor { flex: 1; font-family: 'Fira Code', monospace; font-size: 14px; }
@@ -61,15 +58,14 @@
         input, select { padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; width: 100%; }
         .menu-toggle { display: none; background: none; border: none; font-size: 24px; cursor: pointer; }
         @media (max-width: 768px) { .menu-toggle { display: block; } }
-
-        #customLangInput { display: none; } /* Hidden by default */
+        
+        #customLangInput { display: none; }
     </style>
 </head>
 <body>
 
 <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
 
-<!-- VIEW 1: DASHBOARD -->
 <div id="dashboard">
     <div class="header">
         <h1>📁 Repositories</h1>
@@ -78,7 +74,6 @@
     <div class="project-grid" id="projectGrid"></div>
 </div>
 
-<!-- VIEW 2: EDITOR -->
 <div id="editor-view">
     <nav class="navbar">
         <div style="display: flex; align-items: center;">
@@ -96,19 +91,15 @@
         <div class="sidebar" id="sidebar">
             <div class="sidebar-content">
                 <p style="font-size: 11px; font-weight: 700; color: var(--text-light); text-transform: uppercase;">Add File</p>
-                <input type="text" id="newFileName" placeholder="filename.js">
-                
+                <input type="text" id="newFileName" placeholder="e.g. index.html">
                 <select id="newFileLang" onchange="checkLang(this.value)">
-                    <option value="javascript">JavaScript</option>
-                    <option value="python">Python</option>
                     <option value="html">HTML</option>
+                    <option value="javascript">JavaScript</option>
                     <option value="css">CSS</option>
-                    <option value="other">-- Custom / Other --</option>
+                    <option value="python">Python</option>
+                    <option value="other">-- Other --</option>
                 </select>
-                
-                <!-- Input Manual Bahasa -->
-                <input type="text" id="customLangInput" placeholder="Enter language (e.g. php, sh, c_cpp)">
-                
+                <input type="text" id="customLangInput" placeholder="e.g. php, sql">
                 <button class="btn btn-primary" style="width: 100%;" onclick="createNewFile()">Create File</button>
                 <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
                 <div id="fileList"></div>
@@ -133,10 +124,9 @@
     editor.setTheme("ace/theme/chrome");
     editor.setOptions({ enableBasicAutocompletion: true, enableLiveAutocompletion: true, showPrintMargin: false });
 
-    let db = JSON.parse(localStorage.getItem('devcore_v6_db')) || { projects: {} };
+    let db = JSON.parse(localStorage.getItem('devcore_v7_db')) || { projects: {} };
     let currentProj = null, currentFile = null, pyodide = null;
 
-    // --- DYNAMIC ENGINE ---
     async function initPy() {
         try {
             pyodide = await loadPyodide();
@@ -146,60 +136,25 @@
     }
     initPy();
 
-    function checkLang(val) {
-        const customInput = document.getElementById('customLangInput');
-        customInput.style.display = (val === 'other') ? 'block' : 'none';
-    }
-
-    function toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('active');
-        document.getElementById('overlay').classList.toggle('active');
-    }
-
-    function toggleConsole(force = false) {
-        const c = document.getElementById('console');
+    function checkLang(val) { document.getElementById('customLangInput').style.display = (val === 'other') ? 'block' : 'none'; }
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); document.getElementById('overlay').classList.toggle('active'); }
+    function toggleConsole(force = false) { 
+        const c = document.getElementById('console'); 
         if (force) c.classList.add('expanded'); else c.classList.toggle('expanded');
         document.getElementById('c-arrow').innerText = c.classList.contains('expanded') ? '▼' : '▲';
     }
-
-    function backToDashboard() {
-        document.getElementById('dashboard').style.display = 'block';
-        document.getElementById('editor-view').style.display = 'none';
-        renderDashboard();
-    }
-
-    function openProject(pName) {
-        currentProj = pName;
-        document.getElementById('dashboard').style.display = 'none';
-        document.getElementById('editor-view').style.display = 'flex';
-        document.getElementById('activeProjName').innerText = pName;
-        renderFileList();
-    }
-
-    // --- DB OPS ---
-    function saveDB() { localStorage.setItem('devcore_v6_db', JSON.stringify(db)); }
-
-    function promptNewProject() {
-        const name = prompt("Project Name:");
-        if (name && !db.projects[name]) { db.projects[name] = { files: {} }; saveDB(); renderDashboard(); }
-    }
+    function backToDashboard() { document.getElementById('dashboard').style.display = 'block'; document.getElementById('editor-view').style.display = 'none'; renderDashboard(); }
+    function openProject(pName) { currentProj = pName; document.getElementById('dashboard').style.display = 'none'; document.getElementById('editor-view').style.display = 'flex'; document.getElementById('activeProjName').innerText = pName; renderFileList(); }
+    function saveDB() { localStorage.setItem('devcore_v7_db', JSON.stringify(db)); }
+    function promptNewProject() { const name = prompt("Project Name:"); if (name && !db.projects[name]) { db.projects[name] = { files: {} }; saveDB(); renderDashboard(); } }
 
     function createNewFile() {
         const name = document.getElementById('newFileName').value.trim();
         let lang = document.getElementById('newFileLang').value;
-        const customLang = document.getElementById('customLangInput').value.trim().toLowerCase();
-
-        if (!name) return alert("Enter filename!");
-        if (lang === 'other') {
-            if (!customLang) return alert("Enter custom language name!");
-            lang = customLang;
-        }
-
+        if (lang === 'other') lang = document.getElementById('customLangInput').value.trim().toLowerCase();
+        if (!name) return;
         db.projects[currentProj].files[name] = { content: "", lang: lang };
-        document.getElementById('newFileName').value = "";
-        document.getElementById('customLangInput').value = "";
-        saveDB();
-        renderFileList();
+        document.getElementById('newFileName').value = ""; saveDB(); renderFileList();
     }
 
     function renderDashboard() {
@@ -213,9 +168,7 @@
         });
     }
 
-    function deleteProj(e, p) {
-        e.stopPropagation(); if(confirm(`Delete ${p}?`)) { delete db.projects[p]; saveDB(); renderDashboard(); }
-    }
+    function deleteProj(e, p) { e.stopPropagation(); if(confirm(`Delete ${p}?`)) { delete db.projects[p]; saveDB(); renderDashboard(); } }
 
     function renderFileList() {
         const list = document.getElementById('fileList'); list.innerHTML = "";
@@ -233,15 +186,8 @@
         currentFile = f;
         const data = db.projects[currentProj].files[f];
         editor.setValue(data.content, -1);
-        
-        // Dynamic Mode Loading
-        let mode = data.lang;
-        if(mode === 'python') mode = 'python';
-        if(mode === 'javascript' || mode === 'js') mode = 'javascript';
-        editor.session.setMode("ace/mode/" + mode);
-        
+        editor.session.setMode("ace/mode/" + data.lang);
         renderFileList();
-        if(window.innerWidth <= 768) toggleSidebar();
     }
 
     function saveCurrentFile() {
@@ -250,9 +196,7 @@
         saveDB(); log("System", "Saved " + currentFile);
     }
 
-    function deleteFile(e, f) {
-        e.stopPropagation(); if(confirm(`Delete ${f}?`)) { delete db.projects[currentProj].files[f]; saveDB(); renderFileList(); }
-    }
+    function deleteFile(e, f) { e.stopPropagation(); if(confirm(`Delete ${f}?`)) { delete db.projects[currentProj].files[f]; saveDB(); renderFileList(); } }
 
     function log(type, msg) {
         const b = document.getElementById('consoleBody');
@@ -260,28 +204,64 @@
         b.scrollTop = b.scrollHeight;
     }
 
-    // --- RUN ENGINE ---
+    // --- INTEGRATED RUN ENGINE (THE "STITCHER") ---
     async function runCode() {
         if(!currentFile) return;
-        const code = editor.getValue();
-        const lang = db.projects[currentProj].files[currentFile].lang;
+        const files = db.projects[currentProj].files;
+        const currentData = files[currentFile];
         document.getElementById('consoleBody').innerHTML = ""; 
         toggleConsole(true);
-        log("Exec", "Running " + currentFile);
 
-        if(lang === 'html') {
-            const win = window.open(); win.document.write(code); win.document.close();
-        } else if(lang === 'javascript' || lang === 'js') {
-            try { console.log = (m) => log("Output", m); eval(code); } catch(e) { log("Error", e.message); }
-        } else if(lang === 'python') {
+        if(currentData.lang === 'html') {
+            log("System", "Bundling project files for HTML execution...");
+            
+            let cssBundle = "";
+            let jsBundle = "";
+            
+            // Mencari semua file CSS dan JS di dalam folder project yang sama
+            for (let fName in files) {
+                if (files[fName].lang === 'css' || fName.endsWith('.css')) {
+                    cssBundle += `\n/* --- File: ${fName} --- */\n${files[fName].content}\n`;
+                }
+                if ((files[fName].lang === 'javascript' || fName.endsWith('.js')) && fName !== currentFile) {
+                    jsBundle += `\n// --- File: ${fName} ---\n${files[fName].content}\n`;
+                }
+            }
+
+            let finalHtml = currentData.content;
+
+            // Injeksi CSS ke sebelum </head> atau di awal
+            const styleTag = `<style>${cssBundle}</style>`;
+            if (finalHtml.includes('</head>')) {
+                finalHtml = finalHtml.replace('</head>', styleTag + '</head>');
+            } else {
+                finalHtml = styleTag + finalHtml;
+            }
+
+            // Injeksi JS ke sebelum </body> atau di akhir
+            const scriptTag = `<script>${jsBundle}<\/script>`;
+            if (finalHtml.includes('</body>')) {
+                finalHtml = finalHtml.replace('</body>', scriptTag + '</body>');
+            } else {
+                finalHtml = finalHtml + scriptTag;
+            }
+
+            const win = window.open();
+            win.document.write(finalHtml);
+            win.document.close();
+            log("System", "HTML Integrated Run Successful.");
+
+        } else if(currentData.lang === 'javascript' || currentData.lang === 'js') {
+            try { console.log = (m) => log("Output", m); eval(currentData.content); } catch(e) { log("Error", e.message); }
+        } else if(currentData.lang === 'python') {
             if(!pyodide) return log("Error", "Python loading...");
             try {
                 await pyodide.runPythonAsync(`import builtins\nfrom js import window\ndef custom_input(p=""): return window.prompt(p)\nbuiltins.input = custom_input`);
-                let res = await pyodide.runPythonAsync(code);
+                let res = await pyodide.runPythonAsync(currentData.content);
                 if(res !== undefined) log("Return", res);
             } catch(e) { log("Error", e.message); }
         } else {
-            log("System", `Language '${lang}' is not supported for direct execution in browser. Mode highlighting only.`);
+            log("System", `Direct execution for '${currentData.lang}' not supported.`);
         }
     }
 
