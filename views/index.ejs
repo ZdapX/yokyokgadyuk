@@ -3,346 +3,348 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DevCORE Studio | Cloud IDE</title>
+    <title>DevCORE | Project Hub</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.4/ace.js"></script>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-main: #ffffff;
-            --bg-secondary: #f3f4f6;
-            --accent: #3b82f6;
-            --text-main: #111827;
-            --text-dim: #6b7280;
-            --border: #e5e7eb;
-            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --bg: #ffffff;
+            --sidebar-bg: #f6f8fa;
+            --accent: #0969da;
+            --border: #d0d7de;
+            --text: #1f2328;
+            --text-light: #636c76;
+            --shadow: 0 8px 24px rgba(149,157,165,0.2);
         }
 
-        * { box-sizing: border-box; }
-        body { 
-            margin: 0; 
-            background: var(--bg-main); 
-            color: var(--text-main); 
-            font-family: 'Inter', sans-serif; 
+        * { box-sizing: border-box; transition: all 0.2s ease; }
+        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+
+        /* DASHBOARD VIEW */
+        #dashboard {
+            padding: 40px 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+            display: block; /* Default */
             height: 100vh;
-            overflow: hidden;
+            overflow-y: auto;
         }
 
-        /* Layout Parent */
-        .wrapper { display: flex; height: 100vh; position: relative; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .project-card { 
+            border: 1px solid var(--border); 
+            border-radius: 8px; 
+            padding: 20px; 
+            cursor: pointer;
+            background: white;
+        }
+        .project-card:hover { border-color: var(--accent); box-shadow: var(--shadow); }
 
-        /* Sidebar - Drawer Style */
+        /* EDITOR VIEW */
+        #editor-view { display: none; height: 100vh; flex-direction: column; }
+
+        .navbar {
+            height: 60px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            justify-content: space-between;
+            background: #fff;
+            z-index: 101;
+        }
+
+        .workspace { display: flex; flex: 1; position: relative; overflow: hidden; }
+
+        /* SIDEBAR STABLE */
         .sidebar {
-            width: 300px;
-            background: var(--bg-secondary);
+            width: 280px;
+            background: var(--sidebar-bg);
             border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            transition: transform 0.3s ease;
             z-index: 100;
         }
 
         @media (max-width: 768px) {
             .sidebar {
                 position: absolute;
-                left: 0; top: 0; bottom: 0;
-                transform: translateX(-100%);
+                left: -280px;
+                top: 0; bottom: 0;
+                transition: left 0.3s ease;
             }
-            .sidebar.open { transform: translateX(0); }
+            .sidebar.active { left: 0; }
+            .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 99; }
+            .overlay.active { display: block; }
         }
 
-        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); background: #fff; }
-        .project-section { flex: 1; overflow-y: auto; padding: 15px; }
-
-        /* Modern Cards */
-        .card {
-            background: #fff;
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 15px;
-            border: 1px solid var(--border);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        }
-
-        .card h4 { margin: 0 0 10px 0; font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
-
-        input, select {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 8px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            outline: none;
-            font-size: 0.9rem;
-        }
-
-        .btn {
-            padding: 10px;
-            border-radius: 8px;
-            border: none;
-            font-weight: 600;
-            cursor: pointer;
-            width: 100%;
-            transition: all 0.2s;
-        }
-        .btn-primary { background: var(--accent); color: white; }
-        .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
-
-        /* Hierarchy List */
-        .project-item { margin-bottom: 10px; }
-        .project-name { font-weight: 600; display: flex; justify-content: space-between; align-items: center; padding: 5px; cursor: pointer;}
-        .file-list-inner { padding-left: 15px; border-left: 1px solid var(--border); margin-top: 5px; }
-        .file-link { 
-            padding: 8px; 
-            font-size: 0.85rem; 
-            cursor: pointer; 
-            display: flex; 
-            justify-content: space-between;
+        .sidebar-content { padding: 15px; flex: 1; }
+        .file-item {
+            padding: 8px 12px;
             border-radius: 6px;
-        }
-        .file-link:hover { background: #e5e7eb; }
-        .file-link.active { background: #dbeafe; color: var(--accent); }
-
-        /* Main Workspace */
-        .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-        .navbar {
-            height: 60px;
-            padding: 0 15px;
+            cursor: pointer;
+            margin-bottom: 4px;
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid var(--border);
-            background: #fff;
+            font-size: 14px;
         }
+        .file-item:hover { background: #ebf0f4; }
+        .file-item.active { background: #0969da15; color: var(--accent); font-weight: 600; }
 
-        .toggle-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; display: none; }
-        @media (max-width: 768px) { .toggle-btn { display: block; } }
+        /* EDITOR & CONSOLE */
+        .editor-container { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        #ace-editor { flex: 1; font-family: 'Fira Code', monospace; }
 
-        #editor { flex: 1; font-family: 'Fira Code', monospace; }
-
-        /* Bottom Console - Chat Style */
-        .console-drawer {
+        .console {
             height: 40px;
-            background: #1e293b;
-            color: #fff;
-            transition: height 0.3s ease;
+            background: #0d1117;
+            color: #e6edf3;
+            transition: height 0.3s;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
         }
-        .console-drawer.expanded { height: 200px; }
+        .console.expanded { height: 200px; }
         .console-header { 
             padding: 10px 20px; 
+            background: #161b22; 
             cursor: pointer; 
+            font-size: 12px; 
             display: flex; 
             justify-content: space-between; 
-            font-size: 0.8rem;
-            background: #0f172a;
         }
-        .console-body { flex: 1; overflow-y: auto; padding: 15px; font-family: 'Fira Code', monospace; font-size: 0.8rem; }
+        .console-body { flex: 1; overflow-y: auto; padding: 10px; font-family: 'Fira Code', monospace; font-size: 13px; }
 
-        .btn-run { background: #10b981; color: white; padding: 6px 15px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; }
+        /* UTILS */
+        .btn { padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; font-weight: 600; font-size: 14px; }
+        .btn-primary { background: var(--accent); color: white; border: none; }
+        .btn-run { background: #2da44e; color: white; border: none; }
+        input { padding: 8px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; width: 100%; }
+        .menu-toggle { display: none; background: none; border: none; font-size: 20px; cursor: pointer; }
+        @media (max-width: 768px) { .menu-toggle { display: block; } }
     </style>
 </head>
 <body>
 
-<div class="wrapper">
-    <!-- Sidebar -->
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <h3 style="margin:0; font-size: 1.1rem; color: var(--accent);">DevCORE Studio</h3>
-        </div>
-        
-        <div class="project-section">
-            <!-- Create Project Card -->
-            <div class="card">
-                <h4>New Project</h4>
-                <input type="text" id="projName" placeholder="Project Name...">
-                <button class="btn btn-primary" onclick="createProject()">Create Project</button>
-            </div>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
-            <!-- Create File Card (Only shows if project selected) -->
-            <div class="card" id="fileCard" style="display:none;">
-                <h4>Add File to <span id="activeProjTitle">...</span></h4>
-                <input type="text" id="fileName" placeholder="index.js">
-                <select id="fileLang">
+<!-- VIEW 1: DASHBOARD -->
+<div id="dashboard">
+    <div class="header">
+        <h1>My Projects</h1>
+        <button class="btn btn-primary" onclick="promptNewProject()">+ New Project</button>
+    </div>
+    <div class="project-grid" id="projectGrid">
+        <!-- Rendered by JS -->
+    </div>
+</div>
+
+<!-- VIEW 2: EDITOR -->
+<div id="editor-view">
+    <nav class="navbar">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+            <button class="btn" onclick="backToDashboard()">← Back</button>
+            <b id="activeProjName">Project</b>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn btn-run" onclick="runCode()">RUN</button>
+            <button class="btn" onclick="saveCurrentFile()">Save</button>
+        </div>
+    </nav>
+
+    <div class="workspace">
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-content">
+                <input type="text" id="newFileName" placeholder="filename.js">
+                <select id="newFileLang" style="width: 100%; margin-bottom: 10px; padding: 5px;">
                     <option value="javascript">JavaScript</option>
                     <option value="html">HTML</option>
                     <option value="python">Python</option>
                 </select>
-                <button class="btn btn-ghost" onclick="createFile()">Add File</button>
-            </div>
-
-            <div id="projectTree"></div>
-        </div>
-    </div>
-
-    <!-- Main Content -->
-    <div class="main">
-        <div class="navbar">
-            <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
-            <div style="font-size: 0.9rem; font-weight: 500;">
-                <span id="navFilePath">Select a file</span>
-            </div>
-            <div style="display: flex; gap: 10px;">
-                <button class="btn-run" onclick="runCode()">RUN</button>
-                <button class="btn-ghost" style="padding: 5px 10px;" onclick="saveFile()">Save</button>
+                <button class="btn btn-primary" style="width: 100%;" onclick="createNewFile()">Add File</button>
+                <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+                <div id="fileList"></div>
             </div>
         </div>
 
-        <div id="editor"></div>
-
-        <div class="console-drawer" id="consoleDrawer">
-            <div class="console-header" onclick="toggleConsole()">
-                <span>TERMINAL</span>
-                <span id="consoleToggleSign">▲</span>
-            </div>
-            <div class="console-body" id="consoleBody">
-                > System ready...
+        <div class="editor-container">
+            <div id="ace-editor"></div>
+            <div class="console" id="console">
+                <div class="console-header" onclick="toggleConsole()">
+                    <span>TERMINAL</span>
+                    <span id="c-arrow">▲</span>
+                </div>
+                <div class="console-body" id="consoleBody"></div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    let editor = ace.edit("editor");
+    let editor = ace.edit("ace-editor");
     editor.setTheme("ace/theme/chrome");
     editor.session.setMode("ace/mode/javascript");
     editor.setOptions({ fontSize: "14px", showPrintMargin: false });
 
-    let db = JSON.parse(localStorage.getItem('devcore_v3_db')) || { projects: {} };
+    let db = JSON.parse(localStorage.getItem('devcore_v4_db')) || { projects: {} };
     let currentProj = null;
     let currentFile = null;
     let pyodide = null;
 
+    // Load Python Engine
     async function initPy() {
-        pyodide = await loadPyodide();
-        log("Python Engine Loaded.");
+        try {
+            pyodide = await loadPyodide();
+            log("System", "Python VM Stable.");
+        } catch(e) { log("Error", "Python failed."); }
     }
     initPy();
 
-    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
-    function toggleConsole() { 
-        const d = document.getElementById('consoleDrawer');
-        d.classList.toggle('expanded');
-        document.getElementById('consoleToggleSign').innerText = d.classList.contains('expanded') ? '▼' : '▲';
+    // VIEW LOGIC
+    function backToDashboard() {
+        document.getElementById('dashboard').style.display = 'block';
+        document.getElementById('editor-view').style.display = 'none';
+        renderDashboard();
     }
 
-    function log(msg) {
-        const body = document.getElementById('consoleBody');
-        body.innerHTML += `<div>> ${msg}</div>`;
-        body.scrollTop = body.scrollHeight;
+    function openProject(pName) {
+        currentProj = pName;
+        document.getElementById('dashboard').style.display = 'none';
+        document.getElementById('editor-view').style.display = 'flex';
+        document.getElementById('activeProjName').innerText = pName;
+        renderFileList();
     }
 
-    function createProject() {
-        const name = document.getElementById('projName').value.trim();
+    // UI LOGIC
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('active');
+        document.getElementById('overlay').classList.toggle('active');
+    }
+    function closeSidebar() {
+        document.getElementById('sidebar').classList.remove('active');
+        document.getElementById('overlay').classList.remove('active');
+    }
+    function toggleConsole() {
+        const c = document.getElementById('console');
+        c.classList.toggle('expanded');
+        document.getElementById('c-arrow').innerText = c.classList.contains('expanded') ? '▼' : '▲';
+    }
+
+    // DB LOGIC
+    function saveDB() { localStorage.setItem('devcore_v4_db', JSON.stringify(db)); }
+
+    function promptNewProject() {
+        const name = prompt("Project Name:");
+        if (name && !db.projects[name]) {
+            db.projects[name] = { files: {} };
+            saveDB();
+            renderDashboard();
+        }
+    }
+
+    function createNewFile() {
+        const name = document.getElementById('newFileName').value.trim();
+        const lang = document.getElementById('newFileLang').value;
         if (!name) return;
-        if (db.projects[name]) return alert("Project exists!");
-        db.projects[name] = { files: {} };
-        document.getElementById('projName').value = "";
-        saveDB();
-        renderTree();
-    }
-
-    function selectProject(name) {
-        currentProj = name;
-        document.getElementById('fileCard').style.display = 'block';
-        document.getElementById('activeProjTitle').innerText = name;
-        renderTree();
-    }
-
-    function createFile() {
-        const name = document.getElementById('fileName').value.trim();
-        const lang = document.getElementById('fileLang').value;
-        if (!currentProj || !name) return;
         db.projects[currentProj].files[name] = { content: "", lang: lang };
-        document.getElementById('fileName').value = "";
+        document.getElementById('newFileName').value = "";
         saveDB();
-        renderTree();
+        renderFileList();
     }
 
-    function openFile(proj, file) {
-        currentProj = proj;
-        currentFile = file;
-        const fileData = db.projects[proj].files[file];
-        editor.setValue(fileData.content, -1);
-        editor.session.setMode("ace/mode/" + fileData.lang);
-        document.getElementById('navFilePath').innerText = `${proj} / ${file}`;
-        if (window.innerWidth <= 768) toggleSidebar();
-        renderTree();
+    function renderDashboard() {
+        const grid = document.getElementById('projectGrid');
+        grid.innerHTML = "";
+        Object.keys(db.projects).forEach(p => {
+            const card = document.createElement('div');
+            card.className = 'project-card';
+            card.innerHTML = `<h3>📁 ${p}</h3><p style="color:var(--text-light)">${Object.keys(db.projects[p].files).length} Files</p>
+            <button class="btn" style="color:red; border:none; padding:0;" onclick="deleteProj(event, '${p}')">Delete Project</button>`;
+            card.onclick = () => openProject(p);
+            grid.appendChild(card);
+        });
     }
 
-    function saveFile() {
-        if (!currentProj || !currentFile) return;
+    function deleteProj(e, p) {
+        e.stopPropagation();
+        if(confirm("Delete Project?")) { delete db.projects[p]; saveDB(); renderDashboard(); }
+    }
+
+    function renderFileList() {
+        const list = document.getElementById('fileList');
+        list.innerHTML = "";
+        const files = db.projects[currentProj].files;
+        Object.keys(files).forEach(f => {
+            const item = document.createElement('div');
+            item.className = `file-item ${currentFile === f ? 'active' : ''}`;
+            item.innerHTML = `<span>📄 ${f}</span><span onclick="deleteFile(event, '${f}')">×</span>`;
+            item.onclick = () => loadFile(f);
+            list.appendChild(item);
+        });
+    }
+
+    function loadFile(f) {
+        currentFile = f;
+        const data = db.projects[currentProj].files[f];
+        editor.setValue(data.content, -1);
+        editor.session.setMode("ace/mode/" + data.lang);
+        renderFileList();
+        if(window.innerWidth <= 768) closeSidebar();
+    }
+
+    function saveCurrentFile() {
+        if(!currentFile) return;
         db.projects[currentProj].files[currentFile].content = editor.getValue();
         saveDB();
-        log(`Saved ${currentFile}`);
+        log("System", `Saved ${currentFile}`);
     }
 
-    function deleteFile(proj, file) {
-        if (confirm('Delete file?')) {
-            delete db.projects[proj].files[file];
-            saveDB(); renderTree();
-        }
+    function deleteFile(e, f) {
+        e.stopPropagation();
+        if(confirm("Delete file?")) { delete db.projects[currentProj].files[f]; saveDB(); renderFileList(); }
     }
 
-    function deleteProj(proj) {
-        if (confirm('Delete full project?')) {
-            delete db.projects[proj];
-            if (currentProj === proj) {
-                currentProj = null; currentFile = null;
-                document.getElementById('fileCard').style.display = 'none';
-            }
-            saveDB(); renderTree();
-        }
+    function log(type, msg) {
+        const b = document.getElementById('consoleBody');
+        b.innerHTML += `<div><span style="color:#8b949e">[${type}]</span> ${msg}</div>`;
+        b.scrollTop = b.scrollHeight;
+        if (!document.getElementById('console').classList.contains('expanded')) toggleConsole();
     }
 
-    function saveDB() { localStorage.setItem('devcore_v3_db', JSON.stringify(db)); }
-
-    function renderTree() {
-        const tree = document.getElementById('projectTree');
-        tree.innerHTML = "";
-        for (let pName in db.projects) {
-            let pDiv = document.createElement('div');
-            pDiv.className = "project-item";
-            pDiv.innerHTML = `
-                <div class="project-name" onclick="selectProject('${pName}')">
-                    <span>📁 ${pName}</span>
-                    <button class="btn-delete" onclick="deleteProj('${pName}')" style="background:none; border:none; color:red; cursor:pointer;">×</button>
-                </div>
-                <div class="file-list-inner">
-                    ${Object.keys(db.projects[pName].files).map(fName => `
-                        <div class="file-link ${currentFile === fName && currentProj === pName ? 'active' : ''}">
-                            <span onclick="openFile('${pName}', '${fName}')">📄 ${fName}</span>
-                            <span onclick="deleteFile('${pName}', '${fName}')" style="color:red; cursor:pointer;">×</span>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-            tree.appendChild(pDiv);
-        }
-    }
-
+    // RUN EXECUTION
     async function runCode() {
-        if (!currentFile) return;
+        if(!currentFile) return;
         const code = editor.getValue();
         const lang = db.projects[currentProj].files[currentFile].lang;
-        log(`Executing ${currentFile}...`);
+        
+        document.getElementById('consoleBody').innerHTML = ""; // Clear console
+        log("Exec", `Running ${currentFile}...`);
 
-        if (lang === 'html') {
+        if(lang === 'html') {
             const win = window.open();
             win.document.write(code);
             win.document.close();
-        } else if (lang === 'javascript') {
-            try { eval(code); log("JS Executed. Check browser console for full logs."); }
-            catch(e) { log("Error: " + e.message); }
-        } else if (lang === 'python') {
-            if (!pyodide) return log("Python loading...");
-            try { let out = await pyodide.runPythonAsync(code); log(out || "Success (no output)"); }
-            catch(e) { log("Python Error: " + e.message); }
+        } else if(lang === 'javascript') {
+            try {
+                // Hijack console.log
+                const oldLog = console.log;
+                console.log = (m) => log("Output", m);
+                eval(code);
+                setTimeout(() => { console.log = oldLog; }, 100);
+            } catch(e) { log("Error", e.message); }
+        } else if(lang === 'python') {
+            if(!pyodide) return log("System", "Wait for Python...");
+            try {
+                let out = await pyodide.runPythonAsync(code);
+                log("Output", out || "Success (No return)");
+            } catch(e) { log("Error", e.message); }
         }
     }
 
-    renderTree();
+    renderDashboard();
 </script>
 </body>
 </html>
