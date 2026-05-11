@@ -3,20 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DevCORE | Integrated IDE</title>
+    <title>DevCORE | VFS Integrated IDE</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.4/ace.js"></script>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg: #ffffff;
-            --sidebar-bg: #f6f8fa;
-            --accent: #0969da;
-            --border: #d0d7de;
-            --text: #1f2328;
-            --text-light: #636c76;
-            --shadow: 0 8px 24px rgba(149,157,165,0.1);
-        }
+        :root { --bg: #ffffff; --sidebar-bg: #f6f8fa; --accent: #0969da; --border: #d0d7de; --text: #1f2328; --text-light: #636c76; }
         * { box-sizing: border-box; transition: all 0.2s ease; }
         body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
         
@@ -25,23 +17,17 @@
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
         .project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
         .project-card { border: 1px solid var(--border); border-radius: 12px; padding: 24px; cursor: pointer; background: white; position: relative; }
-        .project-card:hover { border-color: var(--accent); box-shadow: var(--shadow); transform: translateY(-2px); }
+        .project-card:hover { border-color: var(--accent); transform: translateY(-2px); }
         .delete-proj-btn { position: absolute; top: 15px; right: 15px; color: #cf222e; background: none; border: none; cursor: pointer; font-size: 1.2rem; }
 
-        /* EDITOR AREA */
-        #editor-view { display: none; height: 100vh; flex-direction: column; background: #fff; }
+        /* EDITOR */
+        #editor-view { display: none; height: 100vh; flex-direction: column; }
         .navbar { height: 60px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; justify-content: space-between; background: #fff; z-index: 1000; }
         .workspace { display: flex; flex: 1; position: relative; overflow: hidden; }
         .sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 999; }
-        @media (max-width: 768px) {
-            .sidebar { position: absolute; left: -280px; top: 0; bottom: 0; }
-            .sidebar.active { left: 0; }
-            .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 998; }
-            .overlay.active { display: block; }
-        }
+        @media (max-width: 768px) { .sidebar { position: absolute; left: -280px; top: 0; bottom: 0; } .sidebar.active { left: 0; } .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 998; } .overlay.active { display: block; } }
         .sidebar-content { padding: 20px; flex: 1; overflow-y: auto; }
         .file-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; margin-bottom: 6px; display: flex; justify-content: space-between; font-size: 14px; align-items: center; border: 1px solid transparent; }
-        .file-item:hover { background: #fff; border-color: var(--border); }
         .file-item.active { background: #fff; border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
         .editor-container { flex: 1; display: flex; flex-direction: column; min-width: 0; }
@@ -56,9 +42,6 @@
         .btn-primary { background: var(--accent); color: white; border: none; }
         .btn-run { background: #2da44e; color: white; border: none; }
         input, select { padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; width: 100%; }
-        .menu-toggle { display: none; background: none; border: none; font-size: 24px; cursor: pointer; }
-        @media (max-width: 768px) { .menu-toggle { display: block; } }
-        
         #customLangInput { display: none; }
     </style>
 </head>
@@ -77,7 +60,7 @@
 <div id="editor-view">
     <nav class="navbar">
         <div style="display: flex; align-items: center;">
-            <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+            <button class="menu-toggle" style="background:none; border:none; font-size:20px;" onclick="toggleSidebar()">☰</button>
             <button class="btn" style="border:none; background:none;" onclick="backToDashboard()">← Back</button>
             <span id="activeProjName" style="font-weight: 600; margin-left: 10px;">Project</span>
         </div>
@@ -90,16 +73,16 @@
     <div class="workspace">
         <div class="sidebar" id="sidebar">
             <div class="sidebar-content">
-                <p style="font-size: 11px; font-weight: 700; color: var(--text-light); text-transform: uppercase;">Add File</p>
-                <input type="text" id="newFileName" placeholder="e.g. index.html">
+                <input type="text" id="newFileName" placeholder="e.g. data.json">
                 <select id="newFileLang" onchange="checkLang(this.value)">
-                    <option value="html">HTML</option>
                     <option value="javascript">JavaScript</option>
+                    <option value="json">JSON (Database)</option>
+                    <option value="html">HTML</option>
                     <option value="css">CSS</option>
                     <option value="python">Python</option>
                     <option value="other">-- Other --</option>
                 </select>
-                <input type="text" id="customLangInput" placeholder="e.g. php, sql">
+                <input type="text" id="customLangInput" placeholder="e.g. php">
                 <button class="btn btn-primary" style="width: 100%;" onclick="createNewFile()">Create File</button>
                 <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
                 <div id="fileList"></div>
@@ -110,7 +93,7 @@
             <div id="ace-editor"></div>
             <div class="console" id="console">
                 <div class="console-header" onclick="toggleConsole()">
-                    <span>TERMINAL</span>
+                    <span>VIRTUAL TERMINAL</span>
                     <span id="c-arrow">▲</span>
                 </div>
                 <div class="console-body" id="consoleBody"></div>
@@ -124,15 +107,26 @@
     editor.setTheme("ace/theme/chrome");
     editor.setOptions({ enableBasicAutocompletion: true, enableLiveAutocompletion: true, showPrintMargin: false });
 
-    let db = JSON.parse(localStorage.getItem('devcore_v7_db')) || { projects: {} };
+    let db = JSON.parse(localStorage.getItem('devcore_vfs_db')) || { projects: {} };
     let currentProj = null, currentFile = null, pyodide = null;
 
+    // --- VIRTUAL FILE SYSTEM BRIDGE (The Secret Weapon) ---
+    const DevFS = {
+        readFile: (name) => {
+            if (db.projects[currentProj].files[name]) return db.projects[currentProj].files[name].content;
+            return null;
+        },
+        writeFile: (name, content, lang = 'json') => {
+            db.projects[currentProj].files[name] = { content: content, lang: lang };
+            saveDB();
+            renderFileList();
+            log("VFS", `File '${name}' created/updated by script.`);
+        },
+        exists: (name) => !!db.projects[currentProj].files[name]
+    };
+
     async function initPy() {
-        try {
-            pyodide = await loadPyodide();
-            pyodide.setStdout({ batched: (text) => log("Output", text) });
-            log("System", "Python Online.");
-        } catch(e) { log("Error", "Python Init Failed."); }
+        try { pyodide = await loadPyodide(); pyodide.setStdout({ batched: (t) => log("Output", t) }); } catch(e) {}
     }
     initPy();
 
@@ -145,7 +139,7 @@
     }
     function backToDashboard() { document.getElementById('dashboard').style.display = 'block'; document.getElementById('editor-view').style.display = 'none'; renderDashboard(); }
     function openProject(pName) { currentProj = pName; document.getElementById('dashboard').style.display = 'none'; document.getElementById('editor-view').style.display = 'flex'; document.getElementById('activeProjName').innerText = pName; renderFileList(); }
-    function saveDB() { localStorage.setItem('devcore_v7_db', JSON.stringify(db)); }
+    function saveDB() { localStorage.setItem('devcore_vfs_db', JSON.stringify(db)); }
     function promptNewProject() { const name = prompt("Project Name:"); if (name && !db.projects[name]) { db.projects[name] = { files: {} }; saveDB(); renderDashboard(); } }
 
     function createNewFile() {
@@ -163,8 +157,7 @@
             const card = document.createElement('div');
             card.className = 'project-card';
             card.innerHTML = `<button class="delete-proj-btn" onclick="deleteProj(event, '${p}')">×</button><h3>📁 ${p}</h3><p>${Object.keys(db.projects[p].files).length} files</p>`;
-            card.onclick = () => openProject(p);
-            grid.appendChild(card);
+            card.onclick = () => openProject(p); grid.appendChild(card);
         });
     }
 
@@ -177,8 +170,7 @@
             const item = document.createElement('div');
             item.className = `file-item ${currentFile === f ? 'active' : ''}`;
             item.innerHTML = `<span>📄 ${f}</span><span onclick="deleteFile(event, '${f}')" style="color:red">×</span>`;
-            item.onclick = () => loadFile(f);
-            list.appendChild(item);
+            item.onclick = () => loadFile(f); list.appendChild(item);
         });
     }
 
@@ -204,7 +196,7 @@
         b.scrollTop = b.scrollHeight;
     }
 
-    // --- INTEGRATED RUN ENGINE (THE "STITCHER") ---
+    // --- THE MAGIC RUNNER ---
     async function runCode() {
         if(!currentFile) return;
         const files = db.projects[currentProj].files;
@@ -213,55 +205,41 @@
         toggleConsole(true);
 
         if(currentData.lang === 'html') {
-            log("System", "Bundling project files for HTML execution...");
-            
-            let cssBundle = "";
-            let jsBundle = "";
-            
-            // Mencari semua file CSS dan JS di dalam folder project yang sama
-            for (let fName in files) {
-                if (files[fName].lang === 'css' || fName.endsWith('.css')) {
-                    cssBundle += `\n/* --- File: ${fName} --- */\n${files[fName].content}\n`;
-                }
-                if ((files[fName].lang === 'javascript' || fName.endsWith('.js')) && fName !== currentFile) {
-                    jsBundle += `\n// --- File: ${fName} ---\n${files[fName].content}\n`;
-                }
+            log("Bundle", "Injecting Scripts, Styles, and JSON Data...");
+            let css = "", js = "", jsonData = {};
+            for (let f in files) {
+                if (files[f].lang === 'css') css += files[f].content;
+                if (files[f].lang === 'javascript' && f !== currentFile) js += files[f].content;
+                if (files[f].lang === 'json') jsonData[f] = files[f].content;
             }
 
             let finalHtml = currentData.content;
+            const styleTag = `<style>${css}</style>`;
+            const dataTag = `<script>window.VFS_DATA = ${JSON.stringify(jsonData)};<\/script>`;
+            const scriptTag = `<script>${js}<\/script>`;
 
-            // Injeksi CSS ke sebelum </head> atau di awal
-            const styleTag = `<style>${cssBundle}</style>`;
-            if (finalHtml.includes('</head>')) {
-                finalHtml = finalHtml.replace('</head>', styleTag + '</head>');
-            } else {
-                finalHtml = styleTag + finalHtml;
-            }
-
-            // Injeksi JS ke sebelum </body> atau di akhir
-            const scriptTag = `<script>${jsBundle}<\/script>`;
-            if (finalHtml.includes('</body>')) {
-                finalHtml = finalHtml.replace('</body>', scriptTag + '</body>');
-            } else {
-                finalHtml = finalHtml + scriptTag;
-            }
+            finalHtml = finalHtml.replace('</head>', `${styleTag}${dataTag}</head>`);
+            finalHtml = finalHtml.replace('</body>', `${scriptTag}</body>`);
 
             const win = window.open();
             win.document.write(finalHtml);
             win.document.close();
-            log("System", "HTML Integrated Run Successful.");
 
         } else if(currentData.lang === 'javascript' || currentData.lang === 'js') {
-            try { console.log = (m) => log("Output", m); eval(currentData.content); } catch(e) { log("Error", e.message); }
+            try {
+                // Injeksi DevFS agar bisa dipanggil di kode user
+                const userCode = `(async function(fs) { ${currentData.content} })(DevFS)`;
+                console.log = (m) => log("Output", m);
+                eval(userCode);
+            } catch(e) { log("Error", e.message); }
         } else if(currentData.lang === 'python') {
             if(!pyodide) return log("Error", "Python loading...");
             try {
-                await pyodide.runPythonAsync(`import builtins\nfrom js import window\ndef custom_input(p=""): return window.prompt(p)\nbuiltins.input = custom_input`);
-                let res = await pyodide.runPythonAsync(currentData.content);
-                if(res !== undefined) log("Return", res);
+                await pyodide.runPythonAsync(`import builtins\nfrom js import window\nbuiltins.input = window.prompt`);
+                await pyodide.runPythonAsync(currentData.content);
             } catch(e) { log("Error", e.message); }
         } else {
-            log("System", `Direct execution for '${currentData.lang}' not supported.`);
+            log("System", `Language '${currentData.lang}' doesn't support execution.`);
         }
     }
 
