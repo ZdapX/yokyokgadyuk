@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DevCORE | Project Hub</title>
+    <title>DevCORE | Cloud Studio</title>
+    <!-- ACE Editor & Pyodide -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.4/ace.js"></script>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
+    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -15,163 +17,114 @@
             --border: #d0d7de;
             --text: #1f2328;
             --text-light: #636c76;
-            --shadow: 0 8px 24px rgba(149,157,165,0.2);
+            --shadow: 0 8px 24px rgba(149,157,165,0.1);
         }
 
         * { box-sizing: border-box; transition: all 0.2s ease; }
         body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
 
-        /* DASHBOARD VIEW */
-        #dashboard {
-            padding: 40px 20px;
-            max-width: 1000px;
-            margin: 0 auto;
-            display: block; /* Default */
-            height: 100vh;
-            overflow-y: auto;
-        }
-
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        /* --- DASHBOARD VIEW --- */
+        #dashboard { padding: 40px 20px; max-width: 1000px; margin: 0 auto; height: 100vh; overflow-y: auto; display: block; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
         .project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-        .project-card { 
-            border: 1px solid var(--border); 
-            border-radius: 8px; 
-            padding: 20px; 
-            cursor: pointer;
-            background: white;
-        }
-        .project-card:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+        .project-card { border: 1px solid var(--border); border-radius: 12px; padding: 24px; cursor: pointer; background: white; position: relative; }
+        .project-card:hover { border-color: var(--accent); box-shadow: var(--shadow); transform: translateY(-2px); }
+        .project-card h3 { margin: 0 0 10px 0; color: var(--accent); font-size: 1.2rem; }
+        .delete-proj-btn { position: absolute; top: 15px; right: 15px; color: #cf222e; background: none; border: none; cursor: pointer; font-size: 1.2rem; }
 
-        /* EDITOR VIEW */
-        #editor-view { display: none; height: 100vh; flex-direction: column; }
-
-        .navbar {
-            height: 60px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            padding: 0 15px;
-            justify-content: space-between;
-            background: #fff;
-            z-index: 101;
-        }
-
+        /* --- EDITOR VIEW --- */
+        #editor-view { display: none; height: 100vh; flex-direction: column; background: #fff; }
+        .navbar { height: 60px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; justify-content: space-between; background: #fff; z-index: 1000; }
         .workspace { display: flex; flex: 1; position: relative; overflow: hidden; }
 
-        /* SIDEBAR STABLE */
-        .sidebar {
-            width: 280px;
-            background: var(--sidebar-bg);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            z-index: 100;
-        }
-
+        /* SIDEBAR STABLE (MOBILE READY) */
+        .sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 999; }
         @media (max-width: 768px) {
-            .sidebar {
-                position: absolute;
-                left: -280px;
-                top: 0; bottom: 0;
-                transition: left 0.3s ease;
-            }
+            .sidebar { position: absolute; left: -280px; top: 0; bottom: 0; transition: 0.3s; }
             .sidebar.active { left: 0; }
-            .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 99; }
+            .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 998; }
             .overlay.active { display: block; }
         }
 
-        .sidebar-content { padding: 15px; flex: 1; }
-        .file-item {
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-bottom: 4px;
-            display: flex;
-            justify-content: space-between;
-            font-size: 14px;
-        }
-        .file-item:hover { background: #ebf0f4; }
-        .file-item.active { background: #0969da15; color: var(--accent); font-weight: 600; }
+        .sidebar-content { padding: 20px; flex: 1; overflow-y: auto; }
+        .file-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; margin-bottom: 6px; display: flex; justify-content: space-between; font-size: 14px; align-items: center; border: 1px solid transparent; }
+        .file-item:hover { background: #fff; border-color: var(--border); }
+        .file-item.active { background: #fff; border-color: var(--accent); color: var(--accent); font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
-        /* EDITOR & CONSOLE */
-        .editor-container { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-        #ace-editor { flex: 1; font-family: 'Fira Code', monospace; }
+        /* EDITOR & CONSOLE AREA */
+        .editor-container { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #fff; }
+        #ace-editor { flex: 1; font-family: 'Fira Code', monospace; font-size: 14px; }
 
-        .console {
-            height: 40px;
-            background: #0d1117;
-            color: #e6edf3;
-            transition: height 0.3s;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-        .console.expanded { height: 200px; }
-        .console-header { 
-            padding: 10px 20px; 
-            background: #161b22; 
-            cursor: pointer; 
-            font-size: 12px; 
-            display: flex; 
-            justify-content: space-between; 
-        }
-        .console-body { flex: 1; overflow-y: auto; padding: 10px; font-family: 'Fira Code', monospace; font-size: 13px; }
+        .console { height: 40px; background: #0d1117; color: #e6edf3; transition: 0.3s; display: flex; flex-direction: column; }
+        .console.expanded { height: 250px; }
+        .console-header { padding: 10px 20px; background: #161b22; cursor: pointer; font-size: 12px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #30363d; }
+        .console-body { flex: 1; overflow-y: auto; padding: 15px; font-family: 'Fira Code', monospace; font-size: 13px; line-height: 1.6; }
 
-        /* UTILS */
-        .btn { padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; font-weight: 600; font-size: 14px; }
+        /* BUTTONS & INPUTS */
+        .btn { padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 5px; }
         .btn-primary { background: var(--accent); color: white; border: none; }
         .btn-run { background: #2da44e; color: white; border: none; }
-        input { padding: 8px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; width: 100%; }
-        .menu-toggle { display: none; background: none; border: none; font-size: 20px; cursor: pointer; }
+        .btn-ghost { background: transparent; color: var(--text-light); border: none; }
+        input, select { padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; width: 100%; font-family: inherit; }
+        .menu-toggle { display: none; background: none; border: none; font-size: 24px; cursor: pointer; padding: 0 10px; }
         @media (max-width: 768px) { .menu-toggle { display: block; } }
+        
+        /* SCROLLBAR */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #d0d7de; border-radius: 10px; }
     </style>
 </head>
 <body>
 
-<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+<div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
 
-<!-- VIEW 1: DASHBOARD -->
+<!-- VIEW 1: DASHBOARD (GITHUB STYLE) -->
 <div id="dashboard">
     <div class="header">
-        <h1>My Projects</h1>
+        <h1 style="font-weight: 600; font-size: 1.5rem;">📁 My Repositories</h1>
         <button class="btn btn-primary" onclick="promptNewProject()">+ New Project</button>
     </div>
     <div class="project-grid" id="projectGrid">
-        <!-- Rendered by JS -->
+        <!-- Projects rendered here -->
     </div>
 </div>
 
-<!-- VIEW 2: EDITOR -->
+<!-- VIEW 2: EDITOR AREA -->
 <div id="editor-view">
     <nav class="navbar">
-        <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="display: flex; align-items: center;">
             <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
-            <button class="btn" onclick="backToDashboard()">← Back</button>
-            <b id="activeProjName">Project</b>
+            <button class="btn btn-ghost" onclick="backToDashboard()">←</button>
+            <span id="activeProjName" style="font-weight: 600; margin-left: 10px; font-size: 0.95rem;">Project</span>
         </div>
-        <div style="display: flex; gap: 10px;">
-            <button class="btn btn-run" onclick="runCode()">RUN</button>
+        <div style="display: flex; gap: 8px;">
+            <button class="btn btn-run" onclick="runCode()">▶ RUN</button>
             <button class="btn" onclick="saveCurrentFile()">Save</button>
         </div>
     </nav>
 
     <div class="workspace">
+        <!-- Sidebar -->
         <div class="sidebar" id="sidebar">
             <div class="sidebar-content">
-                <input type="text" id="newFileName" placeholder="filename.js">
-                <select id="newFileLang" style="width: 100%; margin-bottom: 10px; padding: 5px;">
+                <p style="font-size: 12px; font-weight: 600; color: var(--text-light); text-transform: uppercase;">Add New File</p>
+                <input type="text" id="newFileName" placeholder="e.g. script.py">
+                <select id="newFileLang">
                     <option value="javascript">JavaScript</option>
-                    <option value="html">HTML</option>
                     <option value="python">Python</option>
+                    <option value="html">HTML</option>
+                    <option value="css">CSS</option>
                 </select>
-                <button class="btn btn-primary" style="width: 100%;" onclick="createNewFile()">Add File</button>
+                <button class="btn btn-primary" style="width: 100%;" onclick="createNewFile()">Create File</button>
                 <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
                 <div id="fileList"></div>
             </div>
         </div>
 
+        <!-- Editor & Console -->
         <div class="editor-container">
             <div id="ace-editor"></div>
+            
             <div class="console" id="console">
                 <div class="console-header" onclick="toggleConsole()">
                     <span>TERMINAL</span>
@@ -184,29 +137,56 @@
 </div>
 
 <script>
+    // Initialize Ace
     let editor = ace.edit("ace-editor");
     editor.setTheme("ace/theme/chrome");
     editor.session.setMode("ace/mode/javascript");
-    editor.setOptions({ fontSize: "14px", showPrintMargin: false });
+    editor.setOptions({ 
+        enableBasicAutocompletion: true,
+        enableLiveAutocompletion: true,
+        showPrintMargin: false,
+        useSoftTabs: true,
+        tabSize: 2
+    });
 
-    let db = JSON.parse(localStorage.getItem('devcore_v4_db')) || { projects: {} };
+    let db = JSON.parse(localStorage.getItem('devcore_v5_db')) || { projects: {} };
     let currentProj = null;
     let currentFile = null;
     let pyodide = null;
 
-    // Load Python Engine
+    // --- SYSTEM CORE: PYTHON ENGINE ---
     async function initPy() {
         try {
+            log("System", "Loading Python Runtime...");
             pyodide = await loadPyodide();
-            log("System", "Python VM Stable.");
-        } catch(e) { log("Error", "Python failed."); }
+            // Capture Stdout (Print)
+            pyodide.setStdout({
+                batched: (text) => log("Output", text)
+            });
+            log("System", "Python Engine Online.");
+        } catch(e) { log("Error", "Python failed: " + e.message); }
     }
     initPy();
 
-    // VIEW LOGIC
+    // --- UI NAVIGATION ---
+    function toggleSidebar() {
+        const s = document.getElementById('sidebar');
+        const o = document.getElementById('overlay');
+        s.classList.toggle('active');
+        o.classList.toggle('active');
+    }
+
+    function toggleConsole(forceOpen = false) {
+        const c = document.getElementById('console');
+        if (forceOpen) c.classList.add('expanded');
+        else c.classList.toggle('expanded');
+        document.getElementById('c-arrow').innerText = c.classList.contains('expanded') ? '▼' : '▲';
+    }
+
     function backToDashboard() {
         document.getElementById('dashboard').style.display = 'block';
         document.getElementById('editor-view').style.display = 'none';
+        currentProj = null;
         renderDashboard();
     }
 
@@ -218,26 +198,11 @@
         renderFileList();
     }
 
-    // UI LOGIC
-    function toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('active');
-        document.getElementById('overlay').classList.toggle('active');
-    }
-    function closeSidebar() {
-        document.getElementById('sidebar').classList.remove('active');
-        document.getElementById('overlay').classList.remove('active');
-    }
-    function toggleConsole() {
-        const c = document.getElementById('console');
-        c.classList.toggle('expanded');
-        document.getElementById('c-arrow').innerText = c.classList.contains('expanded') ? '▼' : '▲';
-    }
-
-    // DB LOGIC
-    function saveDB() { localStorage.setItem('devcore_v4_db', JSON.stringify(db)); }
+    // --- DATABASE OPERATIONS ---
+    function saveDB() { localStorage.setItem('devcore_v5_db', JSON.stringify(db)); }
 
     function promptNewProject() {
-        const name = prompt("Project Name:");
+        const name = prompt("Enter project name:");
         if (name && !db.projects[name]) {
             db.projects[name] = { files: {} };
             saveDB();
@@ -248,29 +213,37 @@
     function createNewFile() {
         const name = document.getElementById('newFileName').value.trim();
         const lang = document.getElementById('newFileLang').value;
-        if (!name) return;
+        if (!name || !currentProj) return;
         db.projects[currentProj].files[name] = { content: "", lang: lang };
         document.getElementById('newFileName').value = "";
         saveDB();
         renderFileList();
     }
 
+    function deleteProj(e, p) {
+        e.stopPropagation();
+        if(confirm(`Delete project "${p}" and all its files?`)) {
+            delete db.projects[p];
+            saveDB();
+            renderDashboard();
+        }
+    }
+
+    // --- RENDERING ---
     function renderDashboard() {
         const grid = document.getElementById('projectGrid');
         grid.innerHTML = "";
         Object.keys(db.projects).forEach(p => {
             const card = document.createElement('div');
             card.className = 'project-card';
-            card.innerHTML = `<h3>📁 ${p}</h3><p style="color:var(--text-light)">${Object.keys(db.projects[p].files).length} Files</p>
-            <button class="btn" style="color:red; border:none; padding:0;" onclick="deleteProj(event, '${p}')">Delete Project</button>`;
+            card.innerHTML = `
+                <button class="delete-proj-btn" onclick="deleteProj(event, '${p}')">×</button>
+                <h3>📁 ${p}</h3>
+                <p style="color:var(--text-light); font-size: 13px;">${Object.keys(db.projects[p].files).length} files in repository</p>
+            `;
             card.onclick = () => openProject(p);
             grid.appendChild(card);
         });
-    }
-
-    function deleteProj(e, p) {
-        e.stopPropagation();
-        if(confirm("Delete Project?")) { delete db.projects[p]; saveDB(); renderDashboard(); }
     }
 
     function renderFileList() {
@@ -280,7 +253,7 @@
         Object.keys(files).forEach(f => {
             const item = document.createElement('div');
             item.className = `file-item ${currentFile === f ? 'active' : ''}`;
-            item.innerHTML = `<span>📄 ${f}</span><span onclick="deleteFile(event, '${f}')">×</span>`;
+            item.innerHTML = `<span>📄 ${f}</span><span onclick="deleteFile(event, '${f}')" style="color:#cf222e">×</span>`;
             item.onclick = () => loadFile(f);
             list.appendChild(item);
         });
@@ -292,58 +265,82 @@
         editor.setValue(data.content, -1);
         editor.session.setMode("ace/mode/" + data.lang);
         renderFileList();
-        if(window.innerWidth <= 768) closeSidebar();
+        if(window.innerWidth <= 768) toggleSidebar();
     }
 
     function saveCurrentFile() {
-        if(!currentFile) return;
+        if(!currentFile || !currentProj) return;
         db.projects[currentProj].files[currentFile].content = editor.getValue();
         saveDB();
-        log("System", `Saved ${currentFile}`);
+        log("System", `Successfully saved ${currentFile}`);
     }
 
     function deleteFile(e, f) {
         e.stopPropagation();
-        if(confirm("Delete file?")) { delete db.projects[currentProj].files[f]; saveDB(); renderFileList(); }
+        if(confirm(`Delete ${f}?`)) {
+            delete db.projects[currentProj].files[f];
+            if(currentFile === f) {
+                currentFile = null;
+                editor.setValue("");
+            }
+            saveDB();
+            renderFileList();
+        }
     }
 
     function log(type, msg) {
         const b = document.getElementById('consoleBody');
-        b.innerHTML += `<div><span style="color:#8b949e">[${type}]</span> ${msg}</div>`;
+        const color = type === 'Error' ? '#ff7b72' : (type === 'Output' ? '#79c0ff' : '#8b949e');
+        b.innerHTML += `<div><span style="color:${color}">[${type}]</span> ${msg}</div>`;
         b.scrollTop = b.scrollHeight;
-        if (!document.getElementById('console').classList.contains('expanded')) toggleConsole();
     }
 
-    // RUN EXECUTION
+    // --- EXECUTION ENGINE ---
     async function runCode() {
-        if(!currentFile) return;
+        if(!currentFile) return alert("Select a file first!");
         const code = editor.getValue();
         const lang = db.projects[currentProj].files[currentFile].lang;
         
-        document.getElementById('consoleBody').innerHTML = ""; // Clear console
+        document.getElementById('consoleBody').innerHTML = ""; 
+        toggleConsole(true);
         log("Exec", `Running ${currentFile}...`);
 
         if(lang === 'html') {
             const win = window.open();
             win.document.write(code);
             win.document.close();
-        } else if(lang === 'javascript') {
+            log("System", "HTML launched in new window.");
+        } 
+        else if(lang === 'javascript') {
             try {
-                // Hijack console.log
                 const oldLog = console.log;
                 console.log = (m) => log("Output", m);
                 eval(code);
-                setTimeout(() => { console.log = oldLog; }, 100);
+                log("System", "JS Execution Finished.");
             } catch(e) { log("Error", e.message); }
-        } else if(lang === 'python') {
-            if(!pyodide) return log("System", "Wait for Python...");
+        } 
+        else if(lang === 'python') {
+            if(!pyodide) return log("Error", "Python VM is still loading. Wait a sec.");
             try {
-                let out = await pyodide.runPythonAsync(code);
-                log("Output", out || "Success (No return)");
+                // SUNTIKAN: Redirect input() ke window.prompt
+                const inputBridge = `
+import builtins
+from js import window
+def custom_input(prompt=""):
+    return window.prompt(prompt)
+builtins.input = custom_input
+`;
+                await pyodide.runPythonAsync(inputBridge);
+                
+                // Run User Code
+                let result = await pyodide.runPythonAsync(code);
+                if(result !== undefined) log("Return", result);
+                log("System", "Python Execution Finished.");
             } catch(e) { log("Error", e.message); }
         }
     }
 
+    // Start
     renderDashboard();
 </script>
 </body>
