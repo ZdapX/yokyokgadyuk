@@ -12,15 +12,13 @@
         * { box-sizing: border-box; transition: all 0.2s ease; }
         body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
         
-        /* DASHBOARD */
         #dashboard { padding: 40px 20px; max-width: 1000px; margin: 0 auto; height: 100vh; overflow-y: auto; display: block; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
         .project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
         .project-card { border: 1px solid var(--border); border-radius: 12px; padding: 24px; cursor: pointer; background: white; position: relative; }
-        .project-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+        .project-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(149,157,165,0.1); }
         .delete-proj-btn { position: absolute; top: 15px; right: 15px; color: #cf222e; background: none; border: none; cursor: pointer; font-size: 1.2rem; }
 
-        /* EDITOR */
         #editor-view { display: none; height: 100vh; flex-direction: column; }
         .navbar { height: 60px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; justify-content: space-between; background: #fff; z-index: 1000; }
         .workspace { display: flex; flex: 1; position: relative; overflow: hidden; }
@@ -28,7 +26,7 @@
         @media (max-width: 768px) { .sidebar { position: absolute; left: -280px; top: 0; bottom: 0; } .sidebar.active { left: 0; } .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 998; } .overlay.active { display: block; } }
         .sidebar-content { padding: 20px; flex: 1; overflow-y: auto; }
         .file-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; margin-bottom: 6px; display: flex; justify-content: space-between; font-size: 14px; align-items: center; border: 1px solid transparent; }
-        .file-item.active { background: #fff; border-color: var(--accent); color: var(--accent); font-weight: 600; }
+        .file-item.active { background: #fff; border-color: var(--accent); color: var(--accent); font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
         .editor-container { flex: 1; display: flex; flex-direction: column; min-width: 0; }
         #ace-editor { flex: 1; font-family: 'Fira Code', monospace; font-size: 14px; }
@@ -51,7 +49,7 @@
 
 <div id="dashboard">
     <div class="header">
-        <h1>📁 Repositories</h1>
+        <h1>📁 Projects Hub</h1>
         <button class="btn btn-primary" onclick="promptNewProject()">+ New Project</button>
     </div>
     <div class="project-grid" id="projectGrid"></div>
@@ -60,7 +58,7 @@
 <div id="editor-view">
     <nav class="navbar">
         <div style="display: flex; align-items: center;">
-            <button class="menu-toggle" style="background:none; border:none; font-size:20px;" onclick="toggleSidebar()">☰</button>
+            <button class="menu-toggle" style="background:none; border:none; font-size:20px; cursor:pointer;" onclick="toggleSidebar()">☰</button>
             <button class="btn" style="border:none; background:none;" onclick="backToDashboard()">← Back</button>
             <span id="activeProjName" style="font-weight: 600; margin-left: 10px;">Project</span>
         </div>
@@ -73,7 +71,8 @@
     <div class="workspace">
         <div class="sidebar" id="sidebar">
             <div class="sidebar-content">
-                <input type="text" id="newFileName" placeholder="e.g. data.json">
+                <p style="font-size:11px; font-weight:700; color:var(--text-light); text-transform:uppercase;">Add New File</p>
+                <input type="text" id="newFileName" placeholder="database.json">
                 <select id="newFileLang" onchange="checkLang(this.value)">
                     <option value="javascript">JavaScript</option>
                     <option value="json">JSON (Database)</option>
@@ -107,22 +106,25 @@
     editor.setTheme("ace/theme/chrome");
     editor.setOptions({ enableBasicAutocompletion: true, enableLiveAutocompletion: true, showPrintMargin: false });
 
-    let db = JSON.parse(localStorage.getItem('devcore_vfs_db')) || { projects: {} };
+    let db = JSON.parse(localStorage.getItem('devcore_final_db')) || { projects: {} };
     let currentProj = null, currentFile = null, pyodide = null;
 
-    // --- VIRTUAL FILE SYSTEM BRIDGE (The Secret Weapon) ---
+    // --- VIRTUAL FILE SYSTEM BRIDGE ---
     const DevFS = {
         readFile: (name) => {
             if (db.projects[currentProj].files[name]) return db.projects[currentProj].files[name].content;
             return null;
         },
         writeFile: (name, content, lang = 'json') => {
-            db.projects[currentProj].files[name] = { content: content, lang: lang };
+            // Logika Otomatis JSON [] jika content kosong
+            let finalContent = content;
+            if (lang === 'json' && (!content || content.trim() === "")) finalContent = "[]";
+            
+            db.projects[currentProj].files[name] = { content: finalContent, lang: lang };
             saveDB();
             renderFileList();
-            log("VFS", `File '${name}' created/updated by script.`);
-        },
-        exists: (name) => !!db.projects[currentProj].files[name]
+            log("VFS", `System updated file: ${name}`);
+        }
     };
 
     async function initPy() {
@@ -139,16 +141,25 @@
     }
     function backToDashboard() { document.getElementById('dashboard').style.display = 'block'; document.getElementById('editor-view').style.display = 'none'; renderDashboard(); }
     function openProject(pName) { currentProj = pName; document.getElementById('dashboard').style.display = 'none'; document.getElementById('editor-view').style.display = 'flex'; document.getElementById('activeProjName').innerText = pName; renderFileList(); }
-    function saveDB() { localStorage.setItem('devcore_vfs_db', JSON.stringify(db)); }
+    function saveDB() { localStorage.setItem('devcore_final_db', JSON.stringify(db)); }
     function promptNewProject() { const name = prompt("Project Name:"); if (name && !db.projects[name]) { db.projects[name] = { files: {} }; saveDB(); renderDashboard(); } }
 
     function createNewFile() {
         const name = document.getElementById('newFileName').value.trim();
         let lang = document.getElementById('newFileLang').value;
         if (lang === 'other') lang = document.getElementById('customLangInput').value.trim().toLowerCase();
+        
         if (!name) return;
-        db.projects[currentProj].files[name] = { content: "", lang: lang };
-        document.getElementById('newFileName').value = ""; saveDB(); renderFileList();
+
+        // Logika Otomatis JSON []
+        let initialContent = "";
+        if (lang === 'json') initialContent = "[]";
+
+        db.projects[currentProj].files[name] = { content: initialContent, lang: lang };
+        document.getElementById('newFileName').value = ""; 
+        saveDB(); 
+        renderFileList();
+        loadFile(name);
     }
 
     function renderDashboard() {
@@ -185,10 +196,10 @@
     function saveCurrentFile() {
         if(!currentFile) return;
         db.projects[currentProj].files[currentFile].content = editor.getValue();
-        saveDB(); log("System", "Saved " + currentFile);
+        saveDB(); log("System", "Secured " + currentFile);
     }
 
-    function deleteFile(e, f) { e.stopPropagation(); if(confirm(`Delete ${f}?`)) { delete db.projects[currentProj].files[f]; saveDB(); renderFileList(); } }
+    function deleteFile(e, f) { e.stopPropagation(); if(confirm(`Delete ${f}?`)) { delete db.projects[currentProj].files[f]; if(currentFile === f) currentFile = null; saveDB(); renderFileList(); } }
 
     function log(type, msg) {
         const b = document.getElementById('consoleBody');
@@ -196,7 +207,6 @@
         b.scrollTop = b.scrollHeight;
     }
 
-    // --- THE MAGIC RUNNER ---
     async function runCode() {
         if(!currentFile) return;
         const files = db.projects[currentProj].files;
@@ -205,41 +215,34 @@
         toggleConsole(true);
 
         if(currentData.lang === 'html') {
-            log("Bundle", "Injecting Scripts, Styles, and JSON Data...");
+            log("Bundle", "Initializing integrated environment...");
             let css = "", js = "", jsonData = {};
             for (let f in files) {
                 if (files[f].lang === 'css') css += files[f].content;
                 if (files[f].lang === 'javascript' && f !== currentFile) js += files[f].content;
                 if (files[f].lang === 'json') jsonData[f] = files[f].content;
             }
-
             let finalHtml = currentData.content;
             const styleTag = `<style>${css}</style>`;
             const dataTag = `<script>window.VFS_DATA = ${JSON.stringify(jsonData)};<\/script>`;
             const scriptTag = `<script>${js}<\/script>`;
-
             finalHtml = finalHtml.replace('</head>', `${styleTag}${dataTag}</head>`);
             finalHtml = finalHtml.replace('</body>', `${scriptTag}</body>`);
-
-            const win = window.open();
-            win.document.write(finalHtml);
-            win.document.close();
-
-        } else if(currentData.lang === 'javascript' || currentData.lang === 'js') {
+            const win = window.open(); win.document.write(finalHtml); win.document.close();
+        } 
+        else if(currentData.lang === 'javascript' || currentData.lang === 'js') {
             try {
-                // Injeksi DevFS agar bisa dipanggil di kode user
                 const userCode = `(async function(fs) { ${currentData.content} })(DevFS)`;
                 console.log = (m) => log("Output", m);
                 eval(userCode);
             } catch(e) { log("Error", e.message); }
-        } else if(currentData.lang === 'python') {
-            if(!pyodide) return log("Error", "Python loading...");
+        } 
+        else if(currentData.lang === 'python') {
+            if(!pyodide) return log("Error", "Python warming up...");
             try {
                 await pyodide.runPythonAsync(`import builtins\nfrom js import window\nbuiltins.input = window.prompt`);
                 await pyodide.runPythonAsync(currentData.content);
             } catch(e) { log("Error", e.message); }
-        } else {
-            log("System", `Language '${currentData.lang}' doesn't support execution.`);
         }
     }
 
